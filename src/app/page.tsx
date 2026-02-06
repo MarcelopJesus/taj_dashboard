@@ -116,8 +116,8 @@ export default function DashboardPage() {
 
   // Refresh silencioso (sem mostrar loading state)
   async function handleSilentRefresh() {
-    // Tenta sincronizar novos dados em background antes de recarregar
-    await syncNewData();
+    // NOTA: Sincronização desabilitada temporariamente para evitar duplicatas
+    // await syncNewData();
 
     await Promise.all([
       loadKPIs(),
@@ -130,7 +130,8 @@ export default function DashboardPage() {
 
   async function handleRefresh() {
     setIsRefreshing(true);
-    await syncNewData(); // Força sincronização ao clicar manualmente
+    // NOTA: Sincronização desabilitada temporariamente para evitar duplicatas
+    // await syncNewData();
     await loadDashboardData();
     setIsRefreshing(false);
   }
@@ -171,11 +172,12 @@ export default function DashboardPage() {
       if (leads) {
         const total = leads.length;
 
-        // Buscar agendamentos reais
-        const { total: agendamentos } = await getAgendamentosConfirmados(
+        // Buscar agendamentos reais - usar chatIdsConvertidos.size para contar leads únicos
+        const { chatIdsConvertidos } = await getAgendamentosConfirmados(
           dateRange.startDate,
           dateRange.endDate
         );
+        const agendamentos = chatIdsConvertidos.size;
 
         // Simular etapas do funil (exceto agendamentos que são reais)
         const engajados = Math.round(total * 0.85);

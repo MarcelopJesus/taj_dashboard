@@ -8,7 +8,7 @@ interface AgendamentoInfo {
 
 /**
  * Busca agendamentos da tabela taj_agendamentos
- * Esta é a fonte primária de dados agora
+ * Filtra por timestamp do agendamento e conta chatIds únicos
  */
 export async function getAgendamentosDaTabela(
     startDate: Date,
@@ -17,10 +17,10 @@ export async function getAgendamentosDaTabela(
     const supabase = getSupabaseClient();
 
     try {
-        // Buscar da tabela taj_agendamentos
-        const { data: agendamentos, count } = await supabase
+        // Buscar agendamentos no período (por timestamp do agendamento)
+        const { data: agendamentos } = await supabase
             .from('taj_agendamentos')
-            .select('*', { count: 'exact' })
+            .select('*')
             .gte('timestamp', startDate.toISOString())
             .lte('timestamp', endDate.toISOString());
 
@@ -31,7 +31,6 @@ export async function getAgendamentosDaTabela(
         const chatIdsConvertidos = new Set<string>();
         const agendamentosList: AgendamentoInfo[] = [];
 
-        // Nota: nomes de colunas com espaços
         agendamentos.forEach((ag: { chatid: string; codigo_agendamento?: string; data_agendamento?: string }) => {
             chatIdsConvertidos.add(ag.chatid);
             agendamentosList.push({
@@ -42,7 +41,7 @@ export async function getAgendamentosDaTabela(
         });
 
         return {
-            total: count || agendamentos.length,
+            total: agendamentos.length,
             agendamentos: agendamentosList,
             chatIdsConvertidos,
         };
@@ -94,6 +93,7 @@ export async function verificarAgendamentoLead(chatId: string): Promise<{
 
 /**
  * Calcula métricas do dashboard baseado em agendamentos
+ * IMPORTANTE: Conta LEADS ÚNICOS que agendaram, não total de registros de agendamento
  */
 export async function calcularMetricasReais(startDate: Date, endDate: Date) {
     const supabase = getSupabaseClient();
@@ -106,16 +106,20 @@ export async function calcularMetricasReais(startDate: Date, endDate: Date) {
         .lte('timestamp', endDate.toISOString());
 
     // Buscar agendamentos da nova tabela
-    const { total: agendamentos, chatIdsConvertidos } = await getAgendamentosDaTabela(startDate, endDate);
+    const { chatIdsConvertidos } = await getAgendamentosDaTabela(startDate, endDate);
 
-    // Calcular taxa de conversão real
+    // CORREÇÃO: Usar chatIdsConvertidos.size para contar leads únicos que agendaram
+    // Um lead com múltiplos agendamentos conta como 1 conversão, não múltiplas
+    const leadsQueAgendaram = chatIdsConvertidos.size;
+
+    // Calcular taxa de conversão real baseada em leads únicos
     const taxaConversao = totalLeads && totalLeads > 0
-        ? (agendamentos / totalLeads) * 100
+        ? (leadsQueAgendaram / totalLeads) * 100
         : 0;
 
     return {
         totalLeads: totalLeads || 0,
-        agendamentos,
+        agendamentos: leadsQueAgendaram, // Número de leads únicos que agendaram
         taxaConversao,
         chatIdsConvertidos,
     };

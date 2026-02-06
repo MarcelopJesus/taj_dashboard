@@ -157,14 +157,25 @@ export async function POST() {
             return NextResponse.json({ message: 'Nenhum agendamento detectado nas mensagens recentes', inserted: 0 });
         }
 
-        // 4. Verificar e filtrar existentes
-        const { data: existentes } = await supabase
-            .from('taj_agendamentos')
-            .select('chatid, codigo_agendamento');
+        // 4. Verificar e filtrar existentes - Buscar TODOS usando paginação
+        const existentesSet = new Set<string>();
+        let offset = 0;
+        const PAGE_SIZE = 1000;
+        let hasMore = true;
 
-        const existentesSet = new Set();
-        if (existentes) {
-            existentes.forEach(e => existentesSet.add(`${e.chatid}-${e.codigo_agendamento}`));
+        while (hasMore) {
+            const { data: existentes } = await supabase
+                .from('taj_agendamentos')
+                .select('chatid, codigo_agendamento')
+                .range(offset, offset + PAGE_SIZE - 1);
+
+            if (existentes && existentes.length > 0) {
+                existentes.forEach(e => existentesSet.add(`${e.chatid}-${e.codigo_agendamento}`));
+                offset += PAGE_SIZE;
+                hasMore = existentes.length === PAGE_SIZE;
+            } else {
+                hasMore = false;
+            }
         }
 
         const novosAgendamentos = todosAgendamentos.filter(ag => {

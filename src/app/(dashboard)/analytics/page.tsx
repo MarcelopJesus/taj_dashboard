@@ -62,30 +62,40 @@ export default function AnalyticsPage() {
     async function loadAnalyticsData() {
         setIsLoading(true);
         try {
-            // Buscar leads que não são convertidos (abandonados/ativos sem conversão)
-            const { data: leads, count } = await supabase
+            // 1. Buscar todos os leads no período
+            const { data: allLeads } = await supabase
                 .from('taj_leads')
-                .select('*', { count: 'exact' })
-                .not('status_atendimento', 'eq', 'convertido')
+                .select('*')
                 .gte('timestamp', dateRange.startDate.toISOString())
                 .lte('timestamp', dateRange.endDate.toISOString())
                 .order('timestamp', { ascending: false });
 
-            setTotalAbandonados(count || 0);
+            // 2. Buscar todos os chatIds que têm agendamento
+            const { data: agendamentos } = await supabase
+                .from('taj_agendamentos')
+                .select('chatid');
+
+            const chatIdsConvertidos = new Set((agendamentos || []).map(a => a.chatid));
+
+            // 3. Filtrar leads que NÃO têm agendamento (abandonados)
+            const leadsAbandonadosList = (allLeads || []).filter(
+                lead => !chatIdsConvertidos.has(lead.chatid)
+            );
+
+            setTotalAbandonados(leadsAbandonadosList.length);
 
             // Simular etapas de abandono baseado no volume
+            const count = leadsAbandonadosList.length;
             const etapas: AbandonoData[] = [
-                { etapa: 'Após ver preços', quantidade: Math.round((count || 0) * 0.35), percentual: 35 },
-                { etapa: 'Ao escolher horário', quantidade: Math.round((count || 0) * 0.25), percentual: 25 },
-                { etapa: 'Sem resposta inicial', quantidade: Math.round((count || 0) * 0.20), percentual: 20 },
-                { etapa: 'Ao escolher terapeuta', quantidade: Math.round((count || 0) * 0.12), percentual: 12 },
-                { etapa: 'Outros', quantidade: Math.round((count || 0) * 0.08), percentual: 8 },
+                { etapa: 'Após ver preços', quantidade: Math.round(count * 0.35), percentual: 35 },
+                { etapa: 'Ao escolher horário', quantidade: Math.round(count * 0.25), percentual: 25 },
+                { etapa: 'Sem resposta inicial', quantidade: Math.round(count * 0.20), percentual: 20 },
+                { etapa: 'Ao escolher terapeuta', quantidade: Math.round(count * 0.12), percentual: 12 },
+                { etapa: 'Outros', quantidade: Math.round(count * 0.08), percentual: 8 },
             ];
             setAbandonoData(etapas);
 
-            if (leads) {
-                setLeadsAbandonados(leads.slice(0, 15));
-            }
+            setLeadsAbandonados(leadsAbandonadosList.slice(0, 15));
         } catch (error) {
             console.error('Erro ao carregar analytics:', error);
         } finally {
