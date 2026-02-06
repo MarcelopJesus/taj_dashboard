@@ -75,11 +75,44 @@ export function ConversationModal({ isOpen, onClose, chatId, leadInfo }: Convers
             const { data: msgs } = await supabase
                 .from('taj_mensagens')
                 .select('*')
-                .eq('chatid', chatId)
-                .order('timestamp', { ascending: true });
+                .eq('chatid', chatId);
 
             if (msgs) {
-                setMensagens(msgs);
+                // 1. Ordenar por timestamp (convertendo para Date para garantir ordem correta)
+                const msgsSorted = [...msgs].sort((a, b) => {
+                    return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+                });
+
+                // 2. Filtrar mensagens válidas (apenas user e model, com texto)
+                const msgsFiltered = msgsSorted.filter(msg => {
+                    const role = msg.conversation?.role;
+                    const text = msg.conversation?.parts?.[0]?.text || '';
+
+                    // Ignorar mensagens do tipo function
+                    if (role === 'function') return false;
+
+                    // Ignorar mensagens sem texto (vazias)
+                    if (!text.trim()) return false;
+
+                    // Apenas user e model
+                    return role === 'user' || role === 'model';
+                });
+
+                // 3. Remover duplicatas (mesma mensagem no mesmo segundo)
+                const msgsUnique: typeof msgs = [];
+                const seen = new Set<string>();
+
+                for (const msg of msgsFiltered) {
+                    const text = msg.conversation?.parts?.[0]?.text || '';
+                    const key = `${msg.conversation?.role}-${text.substring(0, 100)}-${msg.timestamp}`;
+
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        msgsUnique.push(msg);
+                    }
+                }
+
+                setMensagens(msgsUnique);
             }
         } catch (error) {
             console.error('Erro ao carregar conversa:', error);
@@ -198,10 +231,10 @@ export function ConversationModal({ isOpen, onClose, chatId, leadInfo }: Convers
                     {lead?.status_atendimento && (
                         <div className="px-6 py-3 border-b border-white/5 flex items-center gap-3">
                             <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${lead.status_atendimento === 'convertido'
-                                    ? 'bg-brand-gold/20 text-brand-gold'
-                                    : lead.status_atendimento === 'ativo'
-                                        ? 'bg-emerald-500/20 text-emerald-400'
-                                        : 'bg-red-500/20 text-red-400'
+                                ? 'bg-brand-gold/20 text-brand-gold'
+                                : lead.status_atendimento === 'ativo'
+                                    ? 'bg-emerald-500/20 text-emerald-400'
+                                    : 'bg-red-500/20 text-red-400'
                                 }`}>
                                 {lead.status_atendimento}
                             </span>
@@ -235,28 +268,66 @@ export function ConversationModal({ isOpen, onClose, chatId, leadInfo }: Convers
                                 const isUser = msg.conversation.role === 'user';
                                 const text = msg.conversation.parts?.[0]?.text || '';
                                 const prevMsg = mensagens[index - 1];
-                                const showTime = !prevMsg ||
-                                    new Date(msg.timestamp).getTime() - new Date(prevMsg.timestamp).getTime() > 5 * 60 * 1000;
+
+                                // Verificar se é um novo dia
+                                const msgDate = new Date(msg.timestamp);
+                                const prevDate = prevMsg ? new Date(prevMsg.timestamp) : null;
+                                const isNewDay = !prevDate ||
+                                    msgDate.toDateString() !== prevDate.toDateString();
+
+                                // Formatar data do dia
+                                const formatDayLabel = (date: Date) => {
+                                    const today = new Date();
+                                    const yesterday = new Date(today);
+                                    yesterday.setDate(yesterday.getDate() - 1);
+
+                                    if (date.toDateString() === today.toDateString()) {
+                                        return 'Hoje';
+                                    } else if (date.toDateString() === yesterday.toDateString()) {
+                                        return 'Ontem';
+                                    } else {
+                                        return date.toLocaleDateString('pt-BR', {
+                                            weekday: 'long',
+                                            day: '2-digit',
+                                            month: 'long',
+                                            year: 'numeric'
+                                        });
+                                    }
+                                };
+
+                                // Formatar horário HH:MM
+                                const formatTime = (timestamp: string) => {
+                                    return new Date(timestamp).toLocaleTimeString('pt-BR', {
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    });
+                                };
 
                                 return (
                                     <div key={msg.id}>
-                                        {showTime && (
-                                            <div className="flex justify-center my-4">
-                                                <span className="text-xs text-white/30 bg-white/5 px-3 py-1 rounded-full">
-                                                    {formatDateTime(msg.timestamp)}
+                                        {/* Separador de dia */}
+                                        {isNewDay && (
+                                            <div className="flex justify-center my-6">
+                                                <span className="text-xs text-white/50 bg-white/10 px-4 py-1.5 rounded-full font-medium">
+                                                    {formatDayLabel(msgDate)}
                                                 </span>
                                             </div>
                                         )}
-                                        <div className={`flex gap-3 ${isUser ? '' : 'flex-row-reverse'}`}>
+
+                                        {/* Mensagem */}
+                                        <div className={`flex gap-3 mb-3 ${isUser ? '' : 'flex-row-reverse'}`}>
                                             <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${isUser ? 'bg-brand-gold/20 text-brand-gold' : 'bg-purple-500/20 text-purple-400'
                                                 }`}>
                                                 {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                                             </div>
                                             <div className={`max-w-[75%] rounded-2xl px-4 py-3 ${isUser
-                                                    ? 'bg-brand-gold/10 border border-brand-gold/20 rounded-tl-sm'
-                                                    : 'bg-white/5 border border-white/5 rounded-tr-sm'
+                                                ? 'bg-brand-gold/10 border border-brand-gold/20 rounded-tl-sm'
+                                                : 'bg-white/5 border border-white/5 rounded-tr-sm'
                                                 }`}>
                                                 <p className="text-sm text-white whitespace-pre-wrap leading-relaxed">{text}</p>
+                                                <p className={`text-[10px] mt-1 ${isUser ? 'text-brand-gold/50' : 'text-white/30'}`}>
+                                                    {formatTime(msg.timestamp)}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
