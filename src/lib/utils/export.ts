@@ -6,35 +6,35 @@ import { ptBR } from 'date-fns/locale';
 // ============================================
 
 interface ExportColumn<T> {
-    key: keyof T | string;
-    header: string;
-    format?: (value: unknown, row: T) => string;
+  key: keyof T | string;
+  header: string;
+  format?: (value: unknown, row: T) => string;
 }
 
 export function exportToCSV<T extends Record<string, unknown>>(
-    data: T[],
-    columns: ExportColumn<T>[],
-    filename: string
+  data: T[],
+  columns: ExportColumn<T>[],
+  filename: string
 ): void {
-    // BOM for UTF-8
-    const BOM = '\uFEFF';
+  // BOM for UTF-8
+  const BOM = '\uFEFF';
 
-    // Headers
-    const headers = columns.map((col) => `"${col.header}"`).join(';');
+  // Headers
+  const headers = columns.map((col) => `"${col.header}"`).join(';');
 
-    // Rows
-    const rows = data.map((row) => {
-        return columns.map((col) => {
-            const value = getNestedValue(row, col.key as string);
-            const formatted = col.format ? col.format(value, row) : String(value ?? '');
-            // Escape quotes and wrap in quotes
-            return `"${formatted.replace(/"/g, '""')}"`;
-        }).join(';');
-    });
+  // Rows
+  const rows = data.map((row) => {
+    return columns.map((col) => {
+      const value = getNestedValue(row, col.key as string);
+      const formatted = col.format ? col.format(value, row) : String(value ?? '');
+      // Escape quotes and wrap in quotes
+      return `"${formatted.replace(/"/g, '""')}"`;
+    }).join(';');
+  });
 
-    const csvContent = BOM + headers + '\n' + rows.join('\n');
+  const csvContent = BOM + headers + '\n' + rows.join('\n');
 
-    downloadFile(csvContent, `${filename}.csv`, 'text/csv;charset=utf-8');
+  downloadFile(csvContent, `${filename}.csv`, 'text/csv;charset=utf-8');
 }
 
 // ============================================
@@ -42,32 +42,32 @@ export function exportToCSV<T extends Record<string, unknown>>(
 // ============================================
 
 interface PDFOptions {
-    title: string;
-    subtitle?: string;
-    orientation?: 'portrait' | 'landscape';
+  title: string;
+  subtitle?: string;
+  orientation?: 'portrait' | 'landscape';
 }
 
 export function exportToPDF<T extends Record<string, unknown>>(
-    data: T[],
-    columns: ExportColumn<T>[],
-    filename: string,
-    options: PDFOptions
+  data: T[],
+  columns: ExportColumn<T>[],
+  filename: string,
+  options: PDFOptions
 ): void {
-    // Generate HTML table
-    const headers = columns.map((col) => `<th style="background:#D4AF37;color:#0A0A0A;padding:12px 8px;text-align:left;font-weight:600;">${col.header}</th>`).join('');
+  // Generate HTML table
+  const headers = columns.map((col) => `<th style="background:#D4AF37;color:#0A0A0A;padding:12px 8px;text-align:left;font-weight:600;">${col.header}</th>`).join('');
 
-    const rows = data.map((row, index) => {
-        const cells = columns.map((col) => {
-            const value = getNestedValue(row, col.key as string);
-            const formatted = col.format ? col.format(value, row) : String(value ?? '');
-            return `<td style="padding:10px 8px;border-bottom:1px solid #333;">${formatted}</td>`;
-        }).join('');
-        return `<tr style="background:${index % 2 === 0 ? '#1A1A1A' : '#141414'}">${cells}</tr>`;
+  const rows = data.map((row, index) => {
+    const cells = columns.map((col) => {
+      const value = getNestedValue(row, col.key as string);
+      const formatted = col.format ? col.format(value, row) : String(value ?? '');
+      return `<td style="padding:10px 8px;border-bottom:1px solid #333;">${formatted}</td>`;
     }).join('');
+    return `<tr style="background:${index % 2 === 0 ? '#1A1A1A' : '#141414'}">${cells}</tr>`;
+  }).join('');
 
-    const now = format(new Date(), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR });
+  const now = format(new Date(), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR });
 
-    const html = `
+  const html = `
     <!DOCTYPE html>
     <html>
     <head>
@@ -183,17 +183,17 @@ export function exportToPDF<T extends Record<string, unknown>>(
     </html>
   `;
 
-    // Open print dialog
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-        printWindow.document.write(html);
-        printWindow.document.close();
+  // Open print dialog
+  const printWindow = window.open('', '_blank');
+  if (printWindow) {
+    printWindow.document.write(html);
+    printWindow.document.close();
 
-        // Wait for content to load then trigger print
-        printWindow.onload = () => {
-            printWindow.print();
-        };
-    }
+    // Wait for content to load then trigger print
+    printWindow.onload = () => {
+      printWindow.print();
+    };
+  }
 }
 
 // ============================================
@@ -201,51 +201,52 @@ export function exportToPDF<T extends Record<string, unknown>>(
 // ============================================
 
 export interface LeadExportData {
-    nome: string;
-    telefone?: string;
-    origem_cliente?: string | null;
-    status_atendimento: string;
-    timestamp: string;
-    chatid: string;
+  nome: string;
+  telefone?: string;
+  origem_cliente?: string | null;
+  status_atendimento: string;
+  timestamp: string;
+  chatid: string;
+  [key: string]: string | null | undefined; // Index signature for export compatibility
 }
 
 export const leadsExportColumns: ExportColumn<LeadExportData>[] = [
-    { key: 'nome', header: 'Nome' },
-    {
-        key: 'telefone',
-        header: 'Telefone',
-        format: (v) => v ? String(v) : 'N/A'
-    },
-    {
-        key: 'origem_cliente',
-        header: 'Origem',
-        format: (v) => v ? String(v) : 'Não Identificado'
-    },
-    {
-        key: 'status_atendimento',
-        header: 'Status',
-        format: (v) => String(v || 'ativo').charAt(0).toUpperCase() + String(v || 'ativo').slice(1)
-    },
-    {
-        key: 'timestamp',
-        header: 'Data',
-        format: (v) => v ? format(new Date(String(v)), 'dd/MM/yyyy HH:mm') : ''
-    },
-    { key: 'chatid', header: 'Chat ID' },
+  { key: 'nome', header: 'Nome' },
+  {
+    key: 'telefone',
+    header: 'Telefone',
+    format: (v) => v ? String(v) : 'N/A'
+  },
+  {
+    key: 'origem_cliente',
+    header: 'Origem',
+    format: (v) => v ? String(v) : 'Não Identificado'
+  },
+  {
+    key: 'status_atendimento',
+    header: 'Status',
+    format: (v) => String(v || 'ativo').charAt(0).toUpperCase() + String(v || 'ativo').slice(1)
+  },
+  {
+    key: 'timestamp',
+    header: 'Data',
+    format: (v) => v ? format(new Date(String(v)), 'dd/MM/yyyy HH:mm') : ''
+  },
+  { key: 'chatid', header: 'Chat ID' },
 ];
 
 export function exportLeadsCSV(leads: LeadExportData[], dateLabel?: string) {
-    const filename = `leads_${dateLabel?.replace(/\s+/g, '_') || format(new Date(), 'yyyy-MM-dd')}`;
-    exportToCSV(leads, leadsExportColumns, filename);
+  const filename = `leads_${dateLabel?.replace(/\s+/g, '_') || format(new Date(), 'yyyy-MM-dd')}`;
+  exportToCSV(leads, leadsExportColumns, filename);
 }
 
 export function exportLeadsPDF(leads: LeadExportData[], dateLabel?: string) {
-    const filename = `leads_${dateLabel?.replace(/\s+/g, '_') || format(new Date(), 'yyyy-MM-dd')}`;
-    exportToPDF(leads, leadsExportColumns, filename, {
-        title: 'Relatório de Leads',
-        subtitle: dateLabel || `Gerado em ${format(new Date(), 'dd/MM/yyyy')}`,
-        orientation: 'landscape',
-    });
+  const filename = `leads_${dateLabel?.replace(/\s+/g, '_') || format(new Date(), 'yyyy-MM-dd')}`;
+  exportToPDF(leads, leadsExportColumns, filename, {
+    title: 'Relatório de Leads',
+    subtitle: dateLabel || `Gerado em ${format(new Date(), 'dd/MM/yyyy')}`,
+    orientation: 'landscape',
+  });
 }
 
 // ============================================
@@ -253,19 +254,19 @@ export function exportLeadsPDF(leads: LeadExportData[], dateLabel?: string) {
 // ============================================
 
 export interface AnalyticsExportData {
-    etapa: string;
-    quantidade: number;
-    percentual: number;
+  etapa: string;
+  quantidade: number;
+  percentual: number;
 }
 
 export const analyticsExportColumns: ExportColumn<AnalyticsExportData>[] = [
-    { key: 'etapa', header: 'Etapa de Abandono' },
-    { key: 'quantidade', header: 'Quantidade' },
-    {
-        key: 'percentual',
-        header: 'Percentual',
-        format: (v) => `${Number(v).toFixed(1)}%`
-    },
+  { key: 'etapa', header: 'Etapa de Abandono' },
+  { key: 'quantidade', header: 'Quantidade' },
+  {
+    key: 'percentual',
+    header: 'Percentual',
+    format: (v) => `${Number(v).toFixed(1)}%`
+  },
 ];
 
 // ============================================
@@ -273,22 +274,22 @@ export const analyticsExportColumns: ExportColumn<AnalyticsExportData>[] = [
 // ============================================
 
 function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
-    return path.split('.').reduce((acc: unknown, part) => {
-        if (acc && typeof acc === 'object' && part in acc) {
-            return (acc as Record<string, unknown>)[part];
-        }
-        return undefined;
-    }, obj);
+  return path.split('.').reduce((acc: unknown, part) => {
+    if (acc && typeof acc === 'object' && part in acc) {
+      return (acc as Record<string, unknown>)[part];
+    }
+    return undefined;
+  }, obj);
 }
 
 function downloadFile(content: string, filename: string, mimeType: string) {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

@@ -11,6 +11,7 @@ interface KPICardProps {
     trendLabel?: string;
     icon?: React.ReactNode;
     variant?: 'default' | 'gold' | 'success' | 'warning' | 'danger';
+    isLoading?: boolean;
 }
 
 export function KPICard({
@@ -21,6 +22,7 @@ export function KPICard({
     trendLabel,
     icon,
     variant = 'default',
+    isLoading = false,
 }: KPICardProps) {
     const isPositive = trend !== undefined && trend > 0;
     const isNegative = trend !== undefined && trend < 0;
@@ -59,7 +61,11 @@ export function KPICard({
 
                 {/* Value */}
                 <div className="mb-2">
-                    <span className="text-3xl font-bold text-white">{value}</span>
+                    {isLoading ? (
+                        <div className="h-9 w-24 shimmer rounded" />
+                    ) : (
+                        <span className="text-3xl font-bold text-white">{value}</span>
+                    )}
                 </div>
 
                 {/* Trend & Subtitle */}

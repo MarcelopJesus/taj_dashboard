@@ -35,6 +35,7 @@ interface AbandonoData {
     etapa: string;
     quantidade: number;
     percentual: number;
+    [key: string]: string | number; // Index signature for export compatibility
 }
 
 export default function AnalyticsPage() {

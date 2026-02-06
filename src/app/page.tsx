@@ -376,7 +376,7 @@ export default function DashboardPage() {
               subtitle="Confirmados via WhatsApp"
               icon={<CalendarCheck className="h-5 w-5" />}
               isLoading={isLoading}
-              variant="highlight"
+              variant="gold"
             />
             <KPICard
               title="Taxa de Conversão"
