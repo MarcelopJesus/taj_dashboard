@@ -112,8 +112,14 @@ export function DateFilter({ value, onChange, className = '' }: DateFilterProps)
 
     function handleCustomApply() {
         if (customStart && customEnd) {
-            const startDate = new Date(customStart);
-            const endDate = new Date(customEnd);
+            // Parse das datas no formato YYYY-MM-DD (formato do input type="date")
+            // Precisamos criar as datas manualmente para evitar problemas de timezone
+            const [startYear, startMonth, startDay] = customStart.split('-').map(Number);
+            const [endYear, endMonth, endDay] = customEnd.split('-').map(Number);
+
+            const startDate = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0);
+            const endDate = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
+
             const formattedLabel = `${format(startDate, 'dd/MM/yyyy')} - ${format(endDate, 'dd/MM/yyyy')}`;
             onChange({ startDate, endDate, label: formattedLabel });
             setIsOpen(false);

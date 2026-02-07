@@ -60,8 +60,8 @@ export default function ConfiguracoesPage() {
                                             key={tab.id}
                                             onClick={() => setActiveTab(tab.id)}
                                             className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-all ${activeTab === tab.id
-                                                    ? 'bg-brand-gold/20 text-brand-gold'
-                                                    : 'text-white/60 hover:bg-white/5 hover:text-white'
+                                                ? 'bg-brand-gold/20 text-brand-gold'
+                                                : 'text-white/60 hover:bg-white/5 hover:text-white'
                                                 }`}
                                         >
                                             <tab.icon className="h-5 w-5" />
@@ -82,35 +82,21 @@ export default function ConfiguracoesPage() {
                                             Conexão Supabase
                                         </CardTitle>
                                         <CardDescription>
-                                            Configure a conexão com o banco de dados
+                                            Status da conexão com o banco de dados
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-6">
-                                        <div>
-                                            <label className="block text-sm font-medium text-white/70 mb-2">
-                                                Project URL
-                                            </label>
-                                            <input
-                                                type="text"
-                                                defaultValue="https://vynilpckcxkahcyavtgy.supabase.co"
-                                                className="h-12 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-white placeholder:text-white/40 focus:border-brand-gold/50 focus:outline-none"
-                                                readOnly
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-white/70 mb-2">
-                                                API Key (anon)
-                                            </label>
-                                            <input
-                                                type="password"
-                                                defaultValue="eyJhbGciOiJIUz..."
-                                                className="h-12 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-white placeholder:text-white/40 focus:border-brand-gold/50 focus:outline-none"
-                                                readOnly
-                                            />
-                                        </div>
                                         <div className="flex items-center gap-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4">
                                             <Check className="h-5 w-5 text-emerald-400" />
                                             <span className="text-emerald-400">Conexão ativa e funcionando</span>
+                                        </div>
+
+                                        <div className="rounded-xl border border-white/5 bg-white/5 p-4">
+                                            <p className="text-sm text-white/50 mb-2">Credenciais de Acesso</p>
+                                            <p className="text-white/70 text-sm">
+                                                As credenciais do Supabase estão configuradas nas variáveis de ambiente do servidor.
+                                                Para alterações, edite o arquivo <code className="text-brand-gold bg-white/5 px-1.5 py-0.5 rounded">`.env.local`</code>.
+                                            </p>
                                         </div>
 
                                         <div className="pt-4 border-t border-white/5">
@@ -123,6 +109,10 @@ export default function ConfiguracoesPage() {
                                                 <div className="rounded-xl border border-white/5 bg-white/5 p-4">
                                                     <p className="text-sm text-white/50">Mensagens</p>
                                                     <p className="font-medium text-white">taj_mensagens</p>
+                                                </div>
+                                                <div className="rounded-xl border border-white/5 bg-white/5 p-4">
+                                                    <p className="text-sm text-white/50">Agendamentos</p>
+                                                    <p className="font-medium text-white">taj_agendamentos</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -165,7 +155,7 @@ export default function ConfiguracoesPage() {
 
                             {activeTab === 'usuarios' && (
                                 <Card gradient>
-                                    <CardHeader className="flex flex-row items-center justify-between">
+                                    <CardHeader>
                                         <div>
                                             <CardTitle className="flex items-center gap-2">
                                                 <Users className="h-5 w-5 text-brand-gold" />
@@ -175,32 +165,20 @@ export default function ConfiguracoesPage() {
                                                 Gerencie os usuários com acesso ao dashboard
                                             </CardDescription>
                                         </div>
-                                        <Button size="sm">+ Adicionar Usuário</Button>
                                     </CardHeader>
                                     <CardContent>
                                         <div className="space-y-4">
-                                            {[
-                                                { nome: 'Marcelo', email: 'marcelo@neuroai.com.br', role: 'Admin', avatar: 'M' },
-                                                { nome: 'Taj Mahal', email: 'contato@tajmahal.com.br', role: 'Viewer', avatar: 'T' },
-                                            ].map((user, index) => (
-                                                <div key={index} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-4">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-gold/20 text-brand-gold font-semibold">
-                                                            {user.avatar}
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-medium text-white">{user.nome}</p>
-                                                            <p className="text-sm text-white/50">{user.email}</p>
-                                                        </div>
-                                                    </div>
-                                                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${user.role === 'Admin'
-                                                            ? 'bg-brand-gold/20 text-brand-gold'
-                                                            : 'bg-white/10 text-white/70'
-                                                        }`}>
-                                                        {user.role}
-                                                    </span>
-                                                </div>
-                                            ))}
+                                            <div className="flex items-center gap-3 rounded-xl bg-amber-500/10 border border-amber-500/20 p-4">
+                                                <AlertCircle className="h-5 w-5 text-amber-400" />
+                                                <span className="text-amber-400 text-sm">
+                                                    Sistema de autenticação em desenvolvimento. Em breve você poderá adicionar usuários.
+                                                </span>
+                                            </div>
+
+                                            <p className="text-white/50 text-sm">
+                                                O gerenciamento de usuários será implementado com Supabase Auth,
+                                                permitindo criar usuários com email e senha de forma segura.
+                                            </p>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -227,8 +205,8 @@ export default function ConfiguracoesPage() {
                                                     <button
                                                         key={tema}
                                                         className={`rounded-xl border p-4 text-center transition-all ${index === 0
-                                                                ? 'border-brand-gold bg-brand-gold/10 text-brand-gold'
-                                                                : 'border-white/10 text-white/70 hover:border-white/30'
+                                                            ? 'border-brand-gold bg-brand-gold/10 text-brand-gold'
+                                                            : 'border-white/10 text-white/70 hover:border-white/30'
                                                             }`}
                                                     >
                                                         {tema}

@@ -93,7 +93,7 @@ export async function verificarAgendamentoLead(chatId: string): Promise<{
 
 /**
  * Calcula métricas do dashboard baseado em agendamentos
- * IMPORTANTE: Conta LEADS ÚNICOS que agendaram, não total de registros de agendamento
+ * Retorna tanto o total de agendamentos quanto leads únicos que agendaram
  */
 export async function calcularMetricasReais(startDate: Date, endDate: Date) {
     const supabase = getSupabaseClient();
@@ -106,10 +106,9 @@ export async function calcularMetricasReais(startDate: Date, endDate: Date) {
         .lte('timestamp', endDate.toISOString());
 
     // Buscar agendamentos da nova tabela
-    const { chatIdsConvertidos } = await getAgendamentosDaTabela(startDate, endDate);
+    const { total: totalAgendamentos, chatIdsConvertidos } = await getAgendamentosDaTabela(startDate, endDate);
 
-    // CORREÇÃO: Usar chatIdsConvertidos.size para contar leads únicos que agendaram
-    // Um lead com múltiplos agendamentos conta como 1 conversão, não múltiplas
+    // Leads únicos que agendaram (um lead com múltiplos agendamentos conta como 1)
     const leadsQueAgendaram = chatIdsConvertidos.size;
 
     // Calcular taxa de conversão real baseada em leads únicos
@@ -119,7 +118,8 @@ export async function calcularMetricasReais(startDate: Date, endDate: Date) {
 
     return {
         totalLeads: totalLeads || 0,
-        agendamentos: leadsQueAgendaram, // Número de leads únicos que agendaram
+        totalAgendamentos,        // Total de agendamentos (inclui repetições)
+        leadsQueAgendaram,        // Número de leads únicos que agendaram
         taxaConversao,
         chatIdsConvertidos,
     };

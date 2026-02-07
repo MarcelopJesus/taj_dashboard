@@ -81,7 +81,7 @@ Isso é **EXCELENTE** e indica:
 - ✅ Boa experiência do cliente
 - ✅ Potencial para programa de fidelidade
 
-**Recomendação:** Criar programa de fidelidade para incentivar mais retornos (ex: "5ª sessão com 20% off")
+**Recomendação:** Criar programa de fidelidade para incentivar mais retornos 
 
 ---
 

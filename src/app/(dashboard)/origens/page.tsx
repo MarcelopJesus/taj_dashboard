@@ -74,24 +74,41 @@ export default function OrigensPage() {
     async function loadOrigemData() {
         setIsLoading(true);
         try {
+            // Buscar leads com o campo de origem correto
             const { data: leads } = await supabase
                 .from('taj_leads')
-                .select('origem_cliente, status_atendimento')
+                .select('chatid, origem_cliente_taj, origem')
                 .gte('timestamp', dateRange.startDate.toISOString())
                 .lte('timestamp', dateRange.endDate.toISOString());
 
+            // Buscar agendamentos para calcular conversões
+            const { data: agendamentos } = await supabase
+                .from('taj_agendamentos')
+                .select('chatid');
+
+            const chatIdsConvertidos = new Set(agendamentos?.map(a => a.chatid) || []);
+
             if (leads) {
-                // Agrupar por origem
+                // Agrupar por origem - usar origem_cliente_taj ou origem como fallback
                 const stats: Record<string, { total: number; convertidos: number }> = {};
 
                 leads.forEach(lead => {
-                    const origem = lead.origem_cliente || 'Não identificado';
-                    if (!stats[origem]) {
-                        stats[origem] = { total: 0, convertidos: 0 };
+                    // Tentar usar origem_cliente_taj, se não existir usar origem
+                    let origemValue = lead.origem_cliente_taj || lead.origem || 'Não identificado';
+
+                    // Limpar o valor de origem (remover número de telefone se for só número)
+                    if (/^\d{10,}$/.test(origemValue)) {
+                        origemValue = 'WhatsApp Direto';
                     }
-                    stats[origem].total++;
-                    if (lead.status_atendimento === 'convertido') {
-                        stats[origem].convertidos++;
+
+                    if (!stats[origemValue]) {
+                        stats[origemValue] = { total: 0, convertidos: 0 };
+                    }
+                    stats[origemValue].total++;
+
+                    // Verificar se converteu baseado nos agendamentos
+                    if (chatIdsConvertidos.has(lead.chatid)) {
+                        stats[origemValue].convertidos++;
                     }
                 });
 
@@ -445,10 +462,10 @@ export default function OrigensPage() {
                                                     </td>
                                                     <td className="px-4 py-4 text-right">
                                                         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${item.taxaConversao >= 10
-                                                                ? 'bg-emerald-500/20 text-emerald-400'
-                                                                : item.taxaConversao >= 5
-                                                                    ? 'bg-amber-500/20 text-amber-400'
-                                                                    : 'bg-red-500/20 text-red-400'
+                                                            ? 'bg-emerald-500/20 text-emerald-400'
+                                                            : item.taxaConversao >= 5
+                                                                ? 'bg-amber-500/20 text-amber-400'
+                                                                : 'bg-red-500/20 text-red-400'
                                                             }`}>
                                                             {item.taxaConversao.toFixed(1)}%
                                                         </span>

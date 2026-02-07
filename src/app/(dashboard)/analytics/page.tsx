@@ -46,6 +46,12 @@ export default function AnalyticsPage() {
     const [selectedEtapa, setSelectedEtapa] = useState<string | null>(null);
     const [showExportMenu, setShowExportMenu] = useState(false);
 
+    // KPIs dinâmicos
+    const [principalEtapa, setPrincipalEtapa] = useState<string>('—');
+    const [mediaMensagens, setMediaMensagens] = useState<number>(0);
+    const [taxaPerda, setTaxaPerda] = useState<number>(0);
+    const [abandonoPorHora, setAbandonoPorHora] = useState<{ hora: number, quantidade: number }[]>([]);
+
     // Conversation modal
     const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -84,16 +90,113 @@ export default function AnalyticsPage() {
 
             setTotalAbandonados(leadsAbandonadosList.length);
 
-            // Simular etapas de abandono baseado no volume
-            const count = leadsAbandonadosList.length;
+            // 4. Classificar abandono REAL baseado nas mensagens
+            const chatIdsAbandonados = leadsAbandonadosList.map(l => l.chatid);
+
+            // Buscar mensagens dos leads abandonados
+            const { data: mensagens } = await supabase
+                .from('taj_mensagens')
+                .select('chatid, conversation')
+                .in('chatid', chatIdsAbandonados)
+                .limit(5000);
+
+            // Analisar cada conversa para classificar
+            const classificacao: Record<string, {
+                mensagens: number,
+                perguntouPreco: boolean,
+                perguntouHorario: boolean,
+                perguntouTerapeuta: boolean
+            }> = {};
+
+            mensagens?.forEach(m => {
+                if (!classificacao[m.chatid]) {
+                    classificacao[m.chatid] = {
+                        mensagens: 0,
+                        perguntouPreco: false,
+                        perguntouHorario: false,
+                        perguntouTerapeuta: false
+                    };
+                }
+                classificacao[m.chatid].mensagens++;
+
+                // Analisar mensagens do bot (model) para ver o que foi mostrado
+                if (m.conversation?.role === 'model') {
+                    const texto = (m.conversation?.parts?.[0]?.text || '').toLowerCase();
+                    if (texto.includes('r$') || texto.includes('reais') || texto.includes('valor')) {
+                        classificacao[m.chatid].perguntouPreco = true;
+                    }
+                    if (texto.includes('horário') || texto.includes('disponível') || texto.includes('vaga')) {
+                        classificacao[m.chatid].perguntouHorario = true;
+                    }
+                    if (texto.includes('terapeuta') || texto.includes('massagista') || texto.includes('profissional')) {
+                        classificacao[m.chatid].perguntouTerapeuta = true;
+                    }
+                }
+            });
+
+            // Classificar em etapas reais
+            let semResposta = 0;
+            let aposVerPreco = 0;
+            let aposVerHorario = 0;
+            let aposVerTerapeuta = 0;
+            let outros = 0;
+
+            Object.values(classificacao).forEach(c => {
+                if (c.mensagens <= 2) {
+                    semResposta++;
+                } else if (c.perguntouTerapeuta) {
+                    aposVerTerapeuta++;
+                } else if (c.perguntouHorario) {
+                    aposVerHorario++;
+                } else if (c.perguntouPreco) {
+                    aposVerPreco++;
+                } else {
+                    outros++;
+                }
+            });
+
+            // Leads sem mensagens registradas
+            const leadsNaoClassificados = leadsAbandonadosList.length - Object.keys(classificacao).length;
+            semResposta += leadsNaoClassificados;
+
+            const total = leadsAbandonadosList.length || 1;
             const etapas: AbandonoData[] = [
-                { etapa: 'Após ver preços', quantidade: Math.round(count * 0.35), percentual: 35 },
-                { etapa: 'Ao escolher horário', quantidade: Math.round(count * 0.25), percentual: 25 },
-                { etapa: 'Sem resposta inicial', quantidade: Math.round(count * 0.20), percentual: 20 },
-                { etapa: 'Ao escolher terapeuta', quantidade: Math.round(count * 0.12), percentual: 12 },
-                { etapa: 'Outros', quantidade: Math.round(count * 0.08), percentual: 8 },
-            ];
+                { etapa: 'Sem resposta inicial', quantidade: semResposta, percentual: Math.round((semResposta / total) * 100) },
+                { etapa: 'Após ver preços', quantidade: aposVerPreco, percentual: Math.round((aposVerPreco / total) * 100) },
+                { etapa: 'Após ver horários', quantidade: aposVerHorario, percentual: Math.round((aposVerHorario / total) * 100) },
+                { etapa: 'Após ver terapeutas', quantidade: aposVerTerapeuta, percentual: Math.round((aposVerTerapeuta / total) * 100) },
+                { etapa: 'Outros', quantidade: outros, percentual: Math.round((outros / total) * 100) },
+            ].filter(e => e.quantidade > 0).sort((a, b) => b.quantidade - a.quantidade);
+
             setAbandonoData(etapas);
+
+            // Setar KPIs dinâmicos
+            if (etapas.length > 0) {
+                setPrincipalEtapa(etapas[0].etapa);
+            }
+
+            // Calcular média de mensagens dos leads abandonados
+            const msgCounts = Object.values(classificacao).map(c => c.mensagens);
+            const avgMsgs = msgCounts.length > 0
+                ? msgCounts.reduce((a, b) => a + b, 0) / msgCounts.length
+                : 0;
+            setMediaMensagens(avgMsgs);
+
+            // Calcular taxa de perda (abandonados / total de leads no período)
+            const taxaPerdaCalc = (leadsAbandonadosList.length / (allLeads?.length || 1)) * 100;
+            setTaxaPerda(taxaPerdaCalc);
+
+            // Calcular distribuição por hora
+            const abandonoPorHoraCalc: Record<number, number> = {};
+            leadsAbandonadosList.forEach(lead => {
+                const hora = new Date(lead.timestamp).getHours();
+                abandonoPorHoraCalc[hora] = (abandonoPorHoraCalc[hora] || 0) + 1;
+            });
+            const horasPico = Object.entries(abandonoPorHoraCalc)
+                .map(([hora, qtd]) => ({ hora: parseInt(hora), quantidade: qtd }))
+                .sort((a, b) => b.quantidade - a.quantidade)
+                .slice(0, 6);
+            setAbandonoPorHora(horasPico);
 
             setLeadsAbandonados(leadsAbandonadosList.slice(0, 15));
         } catch (error) {
@@ -231,7 +334,9 @@ export default function AnalyticsPage() {
                                     </div>
                                     <div>
                                         <p className="text-sm text-white/60">Principal Etapa</p>
-                                        <p className="text-lg font-bold text-white">Após ver preços</p>
+                                        <p className="text-lg font-bold text-white">
+                                            {isLoading ? '—' : principalEtapa}
+                                        </p>
                                     </div>
                                 </div>
                             </CardContent>
@@ -245,7 +350,9 @@ export default function AnalyticsPage() {
                                     </div>
                                     <div>
                                         <p className="text-sm text-white/60">Média de Mensagens</p>
-                                        <p className="text-2xl font-bold text-white">6.2</p>
+                                        <p className="text-2xl font-bold text-white">
+                                            {isLoading ? '—' : mediaMensagens.toFixed(1)}
+                                        </p>
                                     </div>
                                 </div>
                             </CardContent>
@@ -258,8 +365,10 @@ export default function AnalyticsPage() {
                                         <Clock className="h-6 w-6" />
                                     </div>
                                     <div>
-                                        <p className="text-sm text-white/60">Tempo até Abandono</p>
-                                        <p className="text-2xl font-bold text-white">2.3h</p>
+                                        <p className="text-sm text-white/60">Taxa de Perda</p>
+                                        <p className="text-2xl font-bold text-white">
+                                            {isLoading ? '—' : `${taxaPerda.toFixed(1)}%`}
+                                        </p>
                                     </div>
                                 </div>
                             </CardContent>
@@ -315,31 +424,49 @@ export default function AnalyticsPage() {
                             </CardContent>
                         </Card>
 
-                        {/* Heatmap */}
+                        {/* Horários Críticos - Dados Reais */}
                         <Card gradient hover>
                             <CardHeader>
-                                <CardTitle>Horários de Maior Abandono</CardTitle>
+                                <CardTitle>Horários Críticos de Abandono</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="h-[300px] flex items-center justify-center">
-                                    <div className="text-center">
-                                        <div className="grid grid-cols-7 gap-1 mb-4">
-                                            {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((dia) => (
-                                                <div key={dia} className="text-xs text-white/40 text-center">{dia}</div>
-                                            ))}
-                                            {Array.from({ length: 28 }).map((_, i) => (
-                                                <div
-                                                    key={i}
-                                                    className="h-8 w-8 rounded"
-                                                    style={{
-                                                        backgroundColor: `rgba(239, 68, 68, ${Math.random() * 0.5 + 0.1})`,
-                                                    }}
-                                                />
-                                            ))}
-                                        </div>
-                                        <p className="text-xs text-white/40">Período: 12h - 18h (pico de abandonos)</p>
+                                {isLoading ? (
+                                    <div className="h-[300px] shimmer rounded-xl" />
+                                ) : (
+                                    <div className="space-y-4">
+                                        <p className="text-sm text-white/50 mb-4">
+                                            Horários com maior volume de leads perdidos
+                                        </p>
+                                        {abandonoPorHora.length > 0 ? (
+                                            abandonoPorHora.map((item, idx) => {
+                                                const maxQtd = abandonoPorHora[0].quantidade;
+                                                const percentage = (item.quantidade / maxQtd) * 100;
+                                                return (
+                                                    <div key={item.hora} className="space-y-2">
+                                                        <div className="flex justify-between text-sm">
+                                                            <span className="text-white font-medium">
+                                                                {item.hora.toString().padStart(2, '0')}:00 - {(item.hora + 1).toString().padStart(2, '0')}:00
+                                                            </span>
+                                                            <span className="text-red-400">
+                                                                {item.quantidade} leads
+                                                            </span>
+                                                        </div>
+                                                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full rounded-full bg-gradient-to-r from-red-500 to-red-400 transition-all"
+                                                                style={{ width: `${percentage}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        ) : (
+                                            <p className="text-white/40 text-center py-8">
+                                                Sem dados suficientes
+                                            </p>
+                                        )}
                                     </div>
-                                </div>
+                                )}
                             </CardContent>
                         </Card>
                     </div>

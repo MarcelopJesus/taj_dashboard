@@ -13,6 +13,8 @@ import {
     ChevronLeft,
     ChevronRight,
     Sparkles,
+    Users,
+    Brain,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -31,6 +33,16 @@ const navigation = [
         name: 'Conversas',
         href: '/conversas',
         icon: MessageSquare,
+    },
+    {
+        name: 'Segmentação de Leads',
+        href: '/segmentacao',
+        icon: Users,
+    },
+    {
+        name: 'Insights IA',
+        href: '/insights',
+        icon: Brain,
     },
     {
         name: 'Origem de Leads',

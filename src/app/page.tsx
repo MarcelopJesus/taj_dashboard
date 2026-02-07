@@ -51,6 +51,7 @@ export default function DashboardPage() {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [totalLeads, setTotalLeads] = useState(0);
   const [totalAgendamentos, setTotalAgendamentos] = useState(0);
+  const [leadsQueAgendaram, setLeadsQueAgendaram] = useState(0);
   const [taxaConversao, setTaxaConversao] = useState(0);
   const [funnelData, setFunnelData] = useState<FunnelStep[]>([]);
   const [trendData, setTrendData] = useState<TrendData[]>([]);
@@ -142,7 +143,8 @@ export default function DashboardPage() {
       const metricas = await calcularMetricasReais(dateRange.startDate, dateRange.endDate);
 
       setTotalLeads(metricas.totalLeads);
-      setTotalAgendamentos(metricas.agendamentos);
+      setTotalAgendamentos(metricas.totalAgendamentos);
+      setLeadsQueAgendaram(metricas.leadsQueAgendaram);
       setTaxaConversao(metricas.taxaConversao);
 
       // Carregar todos os leads para export
@@ -171,24 +173,70 @@ export default function DashboardPage() {
 
       if (leads) {
         const total = leads.length;
+        const chatIds = leads.map(l => l.chatid);
 
-        // Buscar agendamentos reais - usar chatIdsConvertidos.size para contar leads únicos
+        // Buscar agendamentos reais
         const { chatIdsConvertidos } = await getAgendamentosConfirmados(
           dateRange.startDate,
           dateRange.endDate
         );
         const agendamentos = chatIdsConvertidos.size;
 
-        // Simular etapas do funil (exceto agendamentos que são reais)
-        const engajados = Math.round(total * 0.85);
-        const perguntaramPreco = Math.round(total * 0.60);
-        const verificaramHorario = Math.round(total * 0.35);
+        // Calcular etapas REAIS baseado nas mensagens
+        // 1. Engajaram = leads com mais de 2 mensagens (cliente respondeu)
+        const { data: mensagensCount } = await supabase
+          .from('taj_mensagens')
+          .select('chatid')
+          .in('chatid', chatIds);
+
+        // Contar mensagens por chatId
+        const msgPorChat: Record<string, number> = {};
+        mensagensCount?.forEach(m => {
+          msgPorChat[m.chatid] = (msgPorChat[m.chatid] || 0) + 1;
+        });
+
+        // Engajaram = mais de 2 mensagens na conversa
+        const engajados = Object.values(msgPorChat).filter(count => count > 2).length;
+
+        // 2. Perguntaram Preço = verificar nas mensagens (buscar padrões)
+        // Buscar mais mensagens para análise mais precisa
+        const { data: mensagensPreco } = await supabase
+          .from('taj_mensagens')
+          .select('chatid, conversation')
+          .in('chatid', chatIds.slice(0, 500)) // Limitar para os 500 primeiros leads
+          .limit(10000);
+
+        const chatIdsPerguntaramPreco = new Set<string>();
+        const chatIdsVerificaramHorario = new Set<string>();
+
+        mensagensPreco?.forEach(m => {
+          // Verificar tanto mensagens do user quanto respostas do bot
+          const texto = (m.conversation?.parts?.[0]?.text || '').toLowerCase();
+
+          // Padrões de interesse em preço (em qualquer mensagem da conversa)
+          if (texto.includes('preço') || texto.includes('valor') || texto.includes('quanto') ||
+            texto.includes('custa') || texto.includes('preco') || texto.includes('custo') ||
+            texto.includes('pago') || texto.includes('pagar') || texto.includes('reais') ||
+            texto.includes('r$') || texto.includes('tabela') || texto.includes('promoção') ||
+            texto.includes('desconto') || texto.includes('pacote')) {
+            chatIdsPerguntaramPreco.add(m.chatid);
+          }
+          // Padrões de interesse em horário/disponibilidade
+          if (texto.includes('horário') || texto.includes('horario') || texto.includes('disponível') ||
+            texto.includes('disponivel') || texto.includes('agendar') ||
+            texto.includes('marcar') || texto.includes('vaga') || texto.includes('hoje') ||
+            texto.includes('amanhã') || texto.includes('semana') || texto.includes('segunda') ||
+            texto.includes('terça') || texto.includes('quarta') || texto.includes('quinta') ||
+            texto.includes('sexta') || texto.includes('sábado') || texto.includes('sabado')) {
+            chatIdsVerificaramHorario.add(m.chatid);
+          }
+        });
 
         setFunnelData([
           { name: 'Leads Totais', value: total },
-          { name: 'Engajaram', value: engajados },
-          { name: 'Perguntaram Preço', value: perguntaramPreco },
-          { name: 'Verificaram Horário', value: verificaramHorario },
+          { name: 'Engajaram (3+ msgs)', value: engajados },
+          { name: 'Perguntaram Preço', value: chatIdsPerguntaramPreco.size },
+          { name: 'Perguntaram Horário', value: chatIdsVerificaramHorario.size },
           { name: 'Agendaram', value: agendamentos },
         ]);
       }
@@ -363,8 +411,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* KPI Cards - Apenas 3 métricas relevantes */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* KPI Cards - 4 métricas principais */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <KPICard
               title="Total de Leads"
               value={isLoading ? '—' : totalLeads.toLocaleString('pt-BR')}
@@ -373,10 +421,18 @@ export default function DashboardPage() {
               isLoading={isLoading}
             />
             <KPICard
-              title="Agendamentos"
+              title="Agendamentos Totais"
               value={isLoading ? '—' : totalAgendamentos.toLocaleString('pt-BR')}
-              subtitle="Confirmados via WhatsApp"
+              subtitle="Incluindo retornos"
               icon={<CalendarCheck className="h-5 w-5" />}
+              isLoading={isLoading}
+              variant="gold"
+            />
+            <KPICard
+              title="Leads que Agendaram"
+              value={isLoading ? '—' : leadsQueAgendaram.toLocaleString('pt-BR')}
+              subtitle="Clientes únicos"
+              icon={<Users className="h-5 w-5" />}
               isLoading={isLoading}
               variant="gold"
             />
