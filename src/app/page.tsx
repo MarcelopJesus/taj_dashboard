@@ -117,8 +117,12 @@ export default function DashboardPage() {
 
   // Refresh silencioso (sem mostrar loading state)
   async function handleSilentRefresh() {
-    // NOTA: Sincronização desabilitada temporariamente para evitar duplicatas
-    // await syncNewData();
+    // Sincronizar agendamentos automaticamente a cada refresh
+    try {
+      await fetch('/api/sync-agendamentos', { method: 'POST' });
+    } catch (error) {
+      console.error('Erro ao sincronizar:', error);
+    }
 
     await Promise.all([
       loadKPIs(),
@@ -131,8 +135,14 @@ export default function DashboardPage() {
 
   async function handleRefresh() {
     setIsRefreshing(true);
-    // NOTA: Sincronização desabilitada temporariamente para evitar duplicatas
-    // await syncNewData();
+
+    // Sincronizar agendamentos automaticamente
+    try {
+      await fetch('/api/sync-agendamentos', { method: 'POST' });
+    } catch (error) {
+      console.error('Erro ao sincronizar agendamentos:', error);
+    }
+
     await loadDashboardData();
     setIsRefreshing(false);
   }
