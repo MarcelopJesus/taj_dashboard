@@ -31,7 +31,7 @@ interface Lead {
   telefone?: string;
   timestamp: string;
   status_atendimento: string;
-  origem_cliente: string | null;
+  origem_cliente_taj: string | null;
 }
 
 interface FunnelStep {
@@ -504,8 +504,8 @@ export default function DashboardPage() {
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-2 text-white/60">
-                              {origemIcons[lead.origem_cliente || 'Não identificado'] || origemIcons['Não identificado']}
-                              <span>{lead.origem_cliente || 'Não identificado'}</span>
+                              {origemIcons[lead.origem_cliente_taj || 'Não identificado'] || origemIcons['Não identificado']}
+                              <span>{lead.origem_cliente_taj || 'Não identificado'}</span>
                             </div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-white/60">

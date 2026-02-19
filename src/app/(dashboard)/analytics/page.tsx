@@ -28,7 +28,7 @@ interface Lead {
     telefone?: string;
     timestamp: string;
     status_atendimento: string;
-    origem_cliente: string | null;
+    origem_cliente_taj: string | null;
 }
 
 interface AbandonoData {

@@ -28,7 +28,7 @@ interface Lead {
     telefone?: string;
     timestamp: string;
     status_atendimento: string;
-    origem_cliente: string | null;
+    origem_cliente_taj: string | null;
     temAgendamento?: boolean;
 }
 
@@ -237,10 +237,10 @@ export default function ConversasPage() {
                                                 </div>
                                                 <div className="flex items-center gap-3 text-sm text-white/50 mt-1">
                                                     <span>{formatTimeAgo(lead.timestamp)}</span>
-                                                    {lead.origem_cliente && (
+                                                    {lead.origem_cliente_taj && (
                                                         <>
                                                             <span>•</span>
-                                                            <span>{lead.origem_cliente}</span>
+                                                            <span>{lead.origem_cliente_taj}</span>
                                                         </>
                                                     )}
                                                 </div>
@@ -289,8 +289,8 @@ export default function ConversasPage() {
                                                         key={pageNum}
                                                         onClick={() => setPage(pageNum)}
                                                         className={`h-8 w-8 rounded-lg text-sm font-medium transition-colors ${page === pageNum
-                                                                ? 'bg-brand-gold text-brand-black'
-                                                                : 'text-white/50 hover:bg-white/5 hover:text-white'
+                                                            ? 'bg-brand-gold text-brand-black'
+                                                            : 'text-white/50 hover:bg-white/5 hover:text-white'
                                                             }`}
                                                     >
                                                         {pageNum}

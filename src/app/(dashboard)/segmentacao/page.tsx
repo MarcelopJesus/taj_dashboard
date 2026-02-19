@@ -449,7 +449,7 @@ export default function SegmentacaoPage() {
                     nome: selectedLead.nome,
                     timestamp: selectedLead.timestamp,
                     status_atendimento: selectedLead.segmento,
-                    origem_cliente: null,
+                    origem_cliente_taj: null,
                 } : null}
             />
         </div>

@@ -8,7 +8,7 @@ export interface Lead {
   follow_up: string | null;
   status_atendimento: StatusAtendimento;
   origem: string | null;
-  origem_cliente: OrigemCliente | null;
+  origem_cliente_taj: OrigemCliente | null;
   // Campos adicionais (a serem criados)
   agendamento_id?: string | null;
   agendamento_data?: string | null;
@@ -30,16 +30,16 @@ export interface Mensagem {
 
 export type StatusAtendimento = 'ativo' | 'convertido' | 'abandonado' | 'pendente';
 
-export type OrigemCliente = 
-  | 'instagram' 
-  | 'google' 
-  | 'indicacao' 
-  | 'facebook' 
-  | 'site' 
-  | 'whatsapp_direto' 
+export type OrigemCliente =
+  | 'instagram'
+  | 'google'
+  | 'indicacao'
+  | 'facebook'
+  | 'site'
+  | 'whatsapp_direto'
   | 'outro';
 
-export type EtapaConversa = 
+export type EtapaConversa =
   | 'saudacao'
   | 'identificacao_interesse'
   | 'apresentacao_servicos'

@@ -194,7 +194,7 @@ export async function fetchRecentLeads(limit: number = 10): Promise<LeadRecente[
     return leads.map(lead => ({
         chatid: lead.chatid,
         nome: lead.nome || 'Sem nome',
-        origem: lead.origem_cliente || 'Não identificado',
+        origem: lead.origem_cliente_taj || 'Não identificado',
         status: lead.status_atendimento,
         ultimaMensagem: 'Ver conversa',
         tempoDecorrido: lead.timestamp,
@@ -208,7 +208,7 @@ export async function fetchOrigemStats(dateRange?: DateRange) {
 
     const { data: leads } = await supabase
         .from('taj_leads')
-        .select('origem_cliente, status_atendimento')
+        .select('origem_cliente_taj, status_atendimento')
         .gte('timestamp', startDate.toISOString())
         .lte('timestamp', endDate.toISOString());
 
@@ -218,7 +218,7 @@ export async function fetchOrigemStats(dateRange?: DateRange) {
     const stats: Record<string, { total: number; convertidos: number }> = {};
 
     leads.forEach(lead => {
-        const origem = lead.origem_cliente || 'outro';
+        const origem = lead.origem_cliente_taj || 'outro';
         if (!stats[origem]) {
             stats[origem] = { total: 0, convertidos: 0 };
         }

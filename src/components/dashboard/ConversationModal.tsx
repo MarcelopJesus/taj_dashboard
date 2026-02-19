@@ -22,7 +22,7 @@ interface Lead {
     telefone?: string;
     timestamp: string;
     status_atendimento: string;
-    origem_cliente?: string | null;
+    origem_cliente_taj?: string | null;
 }
 
 interface ConversationModalProps {
@@ -238,9 +238,9 @@ export function ConversationModal({ isOpen, onClose, chatId, leadInfo }: Convers
                                 }`}>
                                 {lead.status_atendimento}
                             </span>
-                            {lead.origem_cliente && (
+                            {lead.origem_cliente_taj && (
                                 <span className="text-sm text-white/50">
-                                    Origem: <span className="text-white/70">{lead.origem_cliente}</span>
+                                    Origem: <span className="text-white/70">{lead.origem_cliente_taj}</span>
                                 </span>
                             )}
                         </div>

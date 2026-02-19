@@ -203,7 +203,7 @@ export function exportToPDF<T extends Record<string, unknown>>(
 export interface LeadExportData {
   nome: string;
   telefone?: string;
-  origem_cliente?: string | null;
+  origem_cliente_taj?: string | null;
   status_atendimento: string;
   timestamp: string;
   chatid: string;
@@ -218,7 +218,7 @@ export const leadsExportColumns: ExportColumn<LeadExportData>[] = [
     format: (v) => v ? String(v) : 'N/A'
   },
   {
-    key: 'origem_cliente',
+    key: 'origem_cliente_taj',
     header: 'Origem',
     format: (v) => v ? String(v) : 'Não Identificado'
   },
